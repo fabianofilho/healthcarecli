@@ -52,6 +52,7 @@ def _write_minimal_dcm(path: Path) -> Path:
 
 # ── _collect_files ────────────────────────────────────────────────────────────
 
+
 def test_collect_files_single(tmp_path):
     f = tmp_path / "img.dcm"
     f.touch()
@@ -73,6 +74,7 @@ def test_collect_files_empty_list():
 
 
 # ── csend ─────────────────────────────────────────────────────────────────────
+
 
 @patch("healthcarecli.dicom.store.AE")
 def test_csend_success(mock_ae_cls, tmp_path):

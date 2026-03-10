@@ -68,6 +68,7 @@ Commands:
   query    C-FIND — search for patients, studies, series, or instances
   send     C-STORE SCU — send DICOM files to a PACS
   listen   C-STORE SCP — receive incoming DICOM files
+  move     C-MOVE SCU — retrieve studies/series to a destination AE
 ```
 
 ### Profiles
@@ -130,6 +131,72 @@ healthcarecli dicom send --profile orthanc /path/to/study/ --output json
 ```bash
 # Listen for incoming DICOM on port 11112, save to ./received/
 healthcarecli dicom listen --port 11112 --output-dir ./received
+```
+
+### C-MOVE (retrieve)
+
+```bash
+# Retrieve an entire study to a destination AE
+healthcarecli dicom move --profile orthanc \
+  --destination MY_SCP --study-uid 1.2.840.10008.5.1.4.1.1.4
+
+# Retrieve a single series
+healthcarecli dicom move --profile orthanc \
+  --destination MY_SCP --study-uid 1.2.3 --series-uid 4.5.6 --output json
+```
+
+---
+
+## FHIR R4 commands
+
+```
+healthcarecli fhir --help
+
+Commands:
+  profile       Manage FHIR server profiles (add, list, show, delete)
+  capabilities  Fetch the server CapabilityStatement (confirms reachability)
+  search        Search for FHIR resources
+  get           Read a single FHIR resource
+  create        Create a new FHIR resource (POST)
+  update        Update a FHIR resource (PUT)
+  delete        Delete a FHIR resource (DELETE)
+```
+
+### Profiles
+
+```bash
+# Public HAPI test server (no auth)
+healthcarecli fhir profile add hapi --url https://hapi.fhir.org/baseR4
+
+# Bearer token
+healthcarecli fhir profile add myserver \
+  --url https://fhir.example.com --auth bearer --token <token>
+
+# SMART on FHIR client credentials
+healthcarecli fhir profile add epic \
+  --url https://fhir.epic.com/interconnect-fhir-oauth/api/FHIR/R4 \
+  --auth smart \
+  --token-url https://fhir.epic.com/interconnect-fhir-oauth/oauth2/token \
+  --client-id <id> --client-secret <secret>
+```
+
+### Search
+
+```bash
+healthcarecli fhir search Patient --profile hapi --output json
+healthcarecli fhir search Patient --profile hapi \
+  --param family=Smith --param birthdate=1990-01-01
+healthcarecli fhir search Observation --profile hapi \
+  --param subject=Patient/123 --count 20 --output ndjson
+```
+
+### CRUD
+
+```bash
+healthcarecli fhir get Patient/123 --profile hapi
+healthcarecli fhir create --profile hapi --file patient.json
+healthcarecli fhir update Patient/123 --profile hapi --file updated.json
+healthcarecli fhir delete Patient/123 --profile hapi --yes
 ```
 
 ---
@@ -249,9 +316,10 @@ healthcarecli --install-completion   # bash, zsh, fish, PowerShell
 
 ## Roadmap
 
-- [x] DICOM — C-FIND, C-STORE SCU/SCP, C-ECHO, AE profiles
+- [x] DICOM — C-FIND, C-STORE SCU/SCP, C-ECHO, C-MOVE, AE profiles
 - [x] DICOMweb — QIDO-RS, WADO-RS, STOW-RS (REST, auth: none/basic/bearer)
+- [x] FHIR R4 — search, CRUD, capabilities, SMART on FHIR auth
 - [x] npm distribution (`npm install -g healthcarecli`)
 - [x] CI — GitHub Actions (Ubuntu, Windows, macOS × Python 3.10–3.12)
-- [ ] FHIR R4 — patient search, resource CRUD, SMART on FHIR auth
 - [ ] HL7 v2 — MLLP send/receive, ADT/ORM/ORU message builders
+- [ ] PyPI / npm publish

@@ -24,6 +24,7 @@ def _make_profile(**kwargs):
 
 # ── QueryParams.to_dataset ────────────────────────────────────────────────────
 
+
 def test_query_params_defaults():
     ds = QueryParams().to_dataset()
     assert ds.QueryRetrieveLevel == "STUDY"
@@ -52,6 +53,7 @@ def test_query_params_empty_fields_not_set_as_match():
 
 # ── QueryResult.from_dataset ──────────────────────────────────────────────────
 
+
 def test_query_result_from_dataset():
     ds = Dataset()
     ds.PatientID = "P001"
@@ -64,6 +66,7 @@ def test_query_result_from_dataset():
 
 
 # ── cfind (mocked) ────────────────────────────────────────────────────────────
+
 
 def _make_pending_dataset(patient_id: str = "P001") -> Dataset:
     ds = Dataset()
@@ -89,10 +92,12 @@ def _mock_assoc(responses):
 @patch("healthcarecli.dicom.query.AE")
 def test_cfind_yields_pending_results(mock_ae_cls):
     pending_ds = _make_pending_dataset()
-    mock_ae_cls.return_value.associate.return_value = _mock_assoc([
-        (_status(0xFF00), pending_ds),  # Pending
-        (_status(0x0000), None),         # Success / done
-    ])
+    mock_ae_cls.return_value.associate.return_value = _mock_assoc(
+        [
+            (_status(0xFF00), pending_ds),  # Pending
+            (_status(0x0000), None),  # Success / done
+        ]
+    )
 
     profile = _make_profile()
     results = list(cfind(profile, QueryParams()))
@@ -113,9 +118,11 @@ def test_cfind_raises_on_association_failure(mock_ae_cls):
 
 @patch("healthcarecli.dicom.query.AE")
 def test_cfind_raises_on_failure_status(mock_ae_cls):
-    mock_ae_cls.return_value.associate.return_value = _mock_assoc([
-        (_status(0xA700), None),  # Refused: Out of Resources
-    ])
+    mock_ae_cls.return_value.associate.return_value = _mock_assoc(
+        [
+            (_status(0xA700), None),  # Refused: Out of Resources
+        ]
+    )
 
     with pytest.raises(DicomQueryError, match="C-FIND failed"):
         list(cfind(_make_profile(), QueryParams()))
@@ -123,9 +130,11 @@ def test_cfind_raises_on_failure_status(mock_ae_cls):
 
 @patch("healthcarecli.dicom.query.AE")
 def test_cfind_raises_on_none_status(mock_ae_cls):
-    mock_ae_cls.return_value.associate.return_value = _mock_assoc([
-        (None, None),
-    ])
+    mock_ae_cls.return_value.associate.return_value = _mock_assoc(
+        [
+            (None, None),
+        ]
+    )
 
     with pytest.raises(DicomQueryError, match="timed out"):
         list(cfind(_make_profile(), QueryParams()))

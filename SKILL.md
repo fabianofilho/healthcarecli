@@ -82,13 +82,105 @@ healthcarecli dicom listen --port 11112 --output-dir ./received
 
 ---
 
+## DICOM — Retrieving studies (C-MOVE)
+
+```bash
+# Move an entire study to a destination AE
+healthcarecli dicom move --profile <name> --destination <dest-ae> \
+  --study-uid <StudyInstanceUID> --output json
+
+# Move a single series
+healthcarecli dicom move --profile <name> --destination <dest-ae> \
+  --study-uid <StudyInstanceUID> --series-uid <SeriesInstanceUID> --output json
+```
+
+Output: `{"success": true, "completed": 12, "failed": 0, "warning": 0, ...}`
+
+---
+
+## FHIR R4 — Managing server profiles
+
+```bash
+# Save a FHIR server profile (run once per server)
+healthcarecli fhir profile add <name> --url <base-url>
+# With bearer token auth:
+healthcarecli fhir profile add hapi --url https://hapi.fhir.org/baseR4 --auth bearer --token <tok>
+# With SMART on FHIR client credentials:
+healthcarecli fhir profile add myserver --url https://fhir.example.com \
+  --auth smart --token-url https://auth.example.com/token \
+  --client-id <id> --client-secret <secret>
+
+# List / show / delete
+healthcarecli fhir profile list --output json
+healthcarecli fhir profile show <name>
+healthcarecli fhir profile delete <name>
+```
+
+---
+
+## FHIR R4 — Capabilities check
+
+```bash
+# Confirm server is reachable and get FHIR version
+healthcarecli fhir capabilities --profile <name>
+healthcarecli fhir capabilities --profile <name> --output json
+```
+
+---
+
+## FHIR R4 — Search resources
+
+```bash
+# Basic search
+healthcarecli fhir search Patient --profile <name> --output json
+
+# With FHIR search parameters (repeatable)
+healthcarecli fhir search Patient --profile <name> \
+  --param family=Smith --param birthdate=1980-01-01 --output json
+
+# Limit results
+healthcarecli fhir search Observation --profile <name> \
+  --param subject=Patient/123 --count 10 --output json
+
+# NDJSON output (one resource per line — good for pipelines)
+healthcarecli fhir search DiagnosticReport --profile <name> --output ndjson
+```
+
+Output (json): raw FHIR Bundle. Output (ndjson): one resource JSON per line.
+
+---
+
+## FHIR R4 — Read, Create, Update, Delete
+
+```bash
+# Read a resource
+healthcarecli fhir get Patient/123 --profile <name> --output json
+
+# Create from file
+healthcarecli fhir create --profile <name> --file patient.json
+
+# Create from stdin (for agents)
+echo '{"resourceType":"Patient","name":[{"family":"Test"}]}' | \
+  healthcarecli fhir create --profile <name> --stdin
+
+# Update
+healthcarecli fhir update Patient/123 --profile <name> --file updated.json
+
+# Delete (prompts for confirmation unless --yes)
+healthcarecli fhir delete Patient/123 --profile <name> --yes
+```
+
+---
+
 ## Tips for agents
 
 - Always check `--output json` responses for `"success": false` or non-zero exit codes.
 - Run `healthcarecli dicom ping` before querying to confirm the PACS is reachable.
-- Profile names are arbitrary labels you assign — choose descriptive names (e.g. `orthanc`, `prod-pacs`, `dcm4chee`).
+- Run `healthcarecli fhir capabilities` to confirm a FHIR server is reachable.
+- Profile names are arbitrary labels — choose descriptive names (e.g. `orthanc`, `hapi`, `epic-sandbox`).
 - Use `--level STUDY` → `--level SERIES` → `--level IMAGE` drill-down to navigate the DICOM hierarchy.
-- `StudyInstanceUID` from a STUDY-level query is the key needed for SERIES and IMAGE queries.
+- `StudyInstanceUID` from a STUDY-level C-FIND query is the key needed for C-MOVE.
+- FHIR search params follow standard FHIR syntax: `--param _id=<id>`, `--param subject=Patient/<id>`.
 
 ---
 
