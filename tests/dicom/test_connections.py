@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pytest
 
@@ -14,6 +13,7 @@ from healthcarecli.dicom.connections import AEProfile, ProfileNotFoundError
 def isolated_config(tmp_path, monkeypatch):
     """Redirect config writes to a temp directory for every test."""
     import healthcarecli.config.manager as mgr
+
     monkeypatch.setattr(mgr, "config_dir", lambda: tmp_path)
     # profiles_path() calls config_dir() internally, so this is sufficient
 
@@ -60,6 +60,7 @@ def test_delete_missing_raises():
 
 def test_profiles_file_json_structure(tmp_path):
     import healthcarecli.config.manager as mgr
+
     AEProfile(name="pacs", host="10.0.0.1", port=11112, ae_title="PACS").save()
 
     raw = json.loads(mgr.profiles_path().read_text())

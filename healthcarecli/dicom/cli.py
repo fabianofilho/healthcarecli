@@ -13,11 +13,12 @@ from rich.table import Table
 
 from healthcarecli.dicom.connections import AEProfile, ProfileNotFoundError
 from healthcarecli.dicom.echo import DicomEchoError, cecho
+from healthcarecli.dicom.move import DicomMoveError, MoveResult, cmove
 from healthcarecli.dicom.query import DicomQueryError, QueryParams, cfind
 from healthcarecli.dicom.store import DicomStoreError, SCPServer, StoreResult, csend
 from healthcarecli.dicom.web_cli import web_app
 
-app = typer.Typer(help="DICOM operations — profiles, C-FIND, C-STORE, DICOMweb.")
+app = typer.Typer(help="DICOM operations — profiles, C-FIND, C-STORE, C-MOVE, DICOMweb.")
 profile_app = typer.Typer(help="Manage DICOM AE connection profiles.")
 app.add_typer(profile_app, name="profile")
 app.add_typer(web_app, name="web")
@@ -276,3 +277,61 @@ def listen(
     except KeyboardInterrupt:
         server.stop()
         console.print(f"\n[yellow]Stopped. Received {len(server.received)} file(s).[/yellow]")
+
+
+# ── C-MOVE SCU ────────────────────────────────────────────────────────────────
+
+
+@app.command("move")
+def move(
+    profile_name: str = typer.Option(..., "--profile", "-p", help="Source PACS profile"),
+    destination: str = typer.Option(..., "--destination", "-d", help="Destination AE title"),
+    study_uid: str = typer.Option(..., "--study-uid", help="StudyInstanceUID to retrieve"),
+    series_uid: str = typer.Option("", "--series-uid", help="Restrict to one series"),
+    instance_uid: str = typer.Option("", "--instance-uid", help="Retrieve single instance"),
+    model: str = typer.Option("STUDY", "--model", help="Query model: STUDY|PATIENT"),
+    output: str = typer.Option("text", "--output", "-o", help="text|json"),
+) -> None:
+    """Retrieve DICOM instances from a PACS via C-MOVE (push to destination AE)."""
+    try:
+        ae = AEProfile.load(profile_name)
+    except ProfileNotFoundError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(1)
+
+    try:
+        result: MoveResult = cmove(
+            ae,
+            destination,
+            study_uid=study_uid,
+            series_uid=series_uid or "",
+            instance_uid=instance_uid or "",
+            model=model,
+        )
+    except DicomMoveError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(1)
+
+    data = {
+        "profile": profile_name,
+        "destination": destination,
+        "study_uid": study_uid,
+        "success": result.success,
+        "completed": result.completed,
+        "failed": result.failed,
+        "warning": result.warning,
+        "status_code": result.status_code,
+    }
+
+    if output == "json":
+        print_json(json.dumps(data))
+    else:
+        status_str = "[green]OK[/green]" if result.success else "[red]FAIL[/red]"
+        console.print(
+            f"{status_str} C-MOVE to '{destination}' — "
+            f"{result.completed} completed, {result.failed} failed, "
+            f"{result.warning} warnings"
+        )
+
+    if not result.success:
+        raise typer.Exit(1)

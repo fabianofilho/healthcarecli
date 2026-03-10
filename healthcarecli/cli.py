@@ -3,6 +3,7 @@
 import typer
 
 from healthcarecli.dicom import cli as dicom_cli
+from healthcarecli.fhir import cli as fhir_cli
 
 app = typer.Typer(
     name="healthcarecli",
@@ -11,6 +12,7 @@ app = typer.Typer(
 )
 
 app.add_typer(dicom_cli.app, name="dicom")
+app.add_typer(fhir_cli.app, name="fhir")
 
 
 @app.command("init")
