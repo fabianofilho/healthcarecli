@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
 import typer
 from rich import print_json
@@ -30,6 +30,7 @@ console = Console(stderr=True)
 
 # ── Profile management ────────────────────────────────────────────────────────
 
+
 @web_profile_app.command("add")
 def web_profile_add(
     name: str = typer.Argument(..., help="Profile name (e.g. orthanc-web, gcp-healthcare)"),
@@ -44,9 +45,15 @@ def web_profile_add(
 ) -> None:
     """Save a DICOMweb server profile."""
     p = DICOMWebProfile(
-        name=name, url=url,
-        qido_prefix=qido_prefix, wado_prefix=wado_prefix, stow_prefix=stow_prefix,
-        auth_type=auth, username=username, password=password, token=token,
+        name=name,
+        url=url,
+        qido_prefix=qido_prefix,
+        wado_prefix=wado_prefix,
+        stow_prefix=stow_prefix,
+        auth_type=auth,
+        username=username,
+        password=password,
+        token=token,
     )
     p.save()
     console.print(f"[green]DICOMweb profile '{name}' saved.[/green]")
@@ -71,8 +78,12 @@ def web_profile_list(
         table.add_column(col)
     for p in profiles:
         table.add_row(
-            p.name, p.url, p.auth_type,
-            p.qido_prefix or "-", p.wado_prefix or "-", p.stow_prefix or "-",
+            p.name,
+            p.url,
+            p.auth_type,
+            p.qido_prefix or "-",
+            p.wado_prefix or "-",
+            p.stow_prefix or "-",
         )
     console.print(table)
 
@@ -107,11 +118,13 @@ def web_profile_delete(name: str = typer.Argument(...)) -> None:
 
 # ── QIDO-RS ───────────────────────────────────────────────────────────────────
 
+
 @web_app.command("qido")
 def qido(
     profile_name: str = typer.Option(..., "--profile", "-p"),
-    level: str = typer.Option("studies", "--level", "-l",
-                               help="Query level: studies | series | instances"),
+    level: str = typer.Option(
+        "studies", "--level", "-l", help="Query level: studies | series | instances"
+    ),
     patient_id: str = typer.Option("", "--patient-id"),
     patient_name: str = typer.Option("", "--patient-name"),
     study_date: str = typer.Option("", "--study-date", help="YYYYMMDD or YYYYMMDD-YYYYMMDD"),
@@ -119,10 +132,11 @@ def qido(
     series_uid: str = typer.Option("", "--series-uid"),
     accession: str = typer.Option("", "--accession"),
     modality: str = typer.Option("", "--modality"),
-    filter: list[str] = typer.Option([], "--filter", "-f",
-                                      help="Extra tag=value filter, repeatable"),
-    limit: Optional[int] = typer.Option(None, "--limit"),
-    offset: Optional[int] = typer.Option(None, "--offset"),
+    filter: list[str] = typer.Option(
+        [], "--filter", "-f", help="Extra tag=value filter, repeatable"
+    ),
+    limit: int | None = typer.Option(None, "--limit"),
+    offset: int | None = typer.Option(None, "--offset"),
     output: str = typer.Option("table", "--output", "-o", help="table|json"),
 ) -> None:
     """Search studies/series/instances via QIDO-RS."""
@@ -146,7 +160,8 @@ def qido(
 
     try:
         results = qido_search(
-            profile, level=level,
+            profile,
+            level=level,
             filters=filters or None,
             study_uid=study_uid or None,
             series_uid=series_uid or None,
@@ -175,6 +190,7 @@ def qido(
 
 
 # ── WADO-RS ───────────────────────────────────────────────────────────────────
+
 
 @web_app.command("wado")
 def wado(
@@ -216,6 +232,7 @@ def wado(
 
 # ── STOW-RS ───────────────────────────────────────────────────────────────────
 
+
 @web_app.command("stow")
 def stow(
     profile_name: str = typer.Option(..., "--profile", "-p"),
@@ -237,21 +254,29 @@ def stow(
         raise typer.Exit(1)
 
     if output == "json":
-        print_json(json.dumps({
-            "stored": result.stored, "failed": result.failed, "files": result.files,
-        }))
+        print_json(
+            json.dumps(
+                {
+                    "stored": result.stored,
+                    "failed": result.failed,
+                    "files": result.files,
+                }
+            )
+        )
     else:
         for f in result.files:
             icon = "[green]OK[/green]" if f["success"] else "[red]FAIL[/red]"
             detail = f.get("error") or "stored"
             console.print(f"  {icon} {Path(f['file']).name} - {detail}")
-        console.print(f"\n[bold]{result.stored}/{result.stored + result.failed} files stored.[/bold]")
+        total = result.stored + result.failed
+        console.print(f"\n[bold]{result.stored}/{total} files stored.[/bold]")
 
     if result.failed > 0:
         raise typer.Exit(1)
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
+
 
 def _add_if(d: dict, key: str, value: str) -> None:
     if value:

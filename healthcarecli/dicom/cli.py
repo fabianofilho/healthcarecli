@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
 import typer
 from rich import print_json
@@ -28,6 +27,7 @@ console = Console(stderr=True)  # status/errors → stderr; data → stdout
 
 # ── Profile management ────────────────────────────────────────────────────────
 
+
 @profile_app.command("add")
 def profile_add(
     name: str = typer.Argument(..., help="Profile name (e.g. orthanc, dcm4chee)"),
@@ -39,8 +39,12 @@ def profile_add(
 ) -> None:
     """Save a new DICOM AE connection profile."""
     p = AEProfile(
-        name=name, host=host, port=port,
-        ae_title=ae_title, calling_ae=calling_ae, tls=tls,
+        name=name,
+        host=host,
+        port=port,
+        ae_title=ae_title,
+        calling_ae=calling_ae,
+        tls=tls,
     )
     p.save()
     console.print(f"[green]Profile '{name}' saved.[/green]")
@@ -94,6 +98,7 @@ def profile_show(name: str = typer.Argument(...)) -> None:
 
 # ── C-ECHO (ping) ────────────────────────────────────────────────────────────
 
+
 @app.command("ping")
 def ping(
     profile_name: str = typer.Option(..., "--profile", "-p", help="AE profile name"),
@@ -117,33 +122,41 @@ def ping(
 
     ms = round(elapsed * 1000, 1)
     if output == "json":
-        print_json(json.dumps({
-            "profile": profile_name, "success": True,
-            "host": ae.host, "port": ae.port, "ae_title": ae.ae_title,
-            "rtt_ms": ms,
-        }))
+        print_json(
+            json.dumps(
+                {
+                    "profile": profile_name,
+                    "success": True,
+                    "host": ae.host,
+                    "port": ae.port,
+                    "ae_title": ae.ae_title,
+                    "rtt_ms": ms,
+                }
+            )
+        )
     else:
         console.print(f"[green]OK[/green] {ae.ae_title}@{ae.host}:{ae.port} - {ms} ms")
 
 
 # ── C-FIND ────────────────────────────────────────────────────────────────────
 
+
 @app.command("query")
 def query(
     profile_name: str = typer.Option(..., "--profile", "-p", help="AE profile name"),
-    level: str = typer.Option("STUDY", "--level", "-l",
-                               help="Query level: PATIENT|STUDY|SERIES|IMAGE"),
+    level: str = typer.Option(
+        "STUDY", "--level", "-l", help="Query level: PATIENT|STUDY|SERIES|IMAGE"
+    ),
     patient_id: str = typer.Option("", "--patient-id"),
     patient_name: str = typer.Option("", "--patient-name"),
-    study_date: str = typer.Option("", "--study-date",
-                                    help="YYYYMMDD or YYYYMMDD-YYYYMMDD range"),
+    study_date: str = typer.Option("", "--study-date", help="YYYYMMDD or YYYYMMDD-YYYYMMDD range"),
     accession: str = typer.Option("", "--accession"),
     modality: str = typer.Option("", "--modality", help="e.g. CT, MR, US"),
     study_uid: str = typer.Option("", "--study-uid"),
     series_uid: str = typer.Option("", "--series-uid"),
     model: str = typer.Option("STUDY", "--model", help="Query model: STUDY|PATIENT"),
     output: str = typer.Option("table", "--output", "-o", help="Output format: table|json"),
-    limit: Optional[int] = typer.Option(None, "--limit", help="Max results to return"),
+    limit: int | None = typer.Option(None, "--limit", help="Max results to return"),
 ) -> None:
     """Run a C-FIND query against a PACS."""
     try:
@@ -194,6 +207,7 @@ def query(
 
 # ── C-STORE SCU ───────────────────────────────────────────────────────────────
 
+
 @app.command("send")
 def send(
     profile_name: str = typer.Option(..., "--profile", "-p", help="AE profile name"),
@@ -212,8 +226,14 @@ def send(
     def progress(r: StoreResult) -> None:
         icon = "[green]OK[/green]" if r.success else "[red]FAIL[/red]"
         console.print(f"  {icon} {r.path.name} - {r.message}")
-        sent.append({"file": str(r.path), "success": r.success,
-                      "status": r.status_code, "message": r.message})
+        sent.append(
+            {
+                "file": str(r.path),
+                "success": r.success,
+                "status": r.status_code,
+                "message": r.message,
+            }
+        )
 
     try:
         csend(ae, paths, on_progress=progress)
@@ -233,6 +253,7 @@ def send(
 
 # ── C-STORE SCP (listener) ───────────────────────────────────────────────────
 
+
 @app.command("listen")
 def listen(
     ae_title: str = typer.Option("HEALTHCARECLI", "--ae-title"),
@@ -242,14 +263,14 @@ def listen(
     """Start a C-STORE SCP listener that saves incoming DICOM files to disk."""
     server = SCPServer(ae_title=ae_title, port=port, output_dir=output_dir)
     console.print(
-        f"[green]Listening on port {port} as '{ae_title}' "
-        f"→ saving to '{output_dir}'[/green]"
+        f"[green]Listening on port {port} as '{ae_title}' → saving to '{output_dir}'[/green]"
     )
     console.print("Press Ctrl+C to stop.")
     server.start()
     try:
         # Block main thread — server runs in daemon thread
         import time
+
         while True:
             time.sleep(1)
     except KeyboardInterrupt:

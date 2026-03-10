@@ -27,18 +27,19 @@ SECTION = "dicomweb"
 
 # ── Profile ───────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class DICOMWebProfile:
     """Connection profile for a DICOMweb server."""
 
     name: str
-    url: str                # Base URL, e.g. http://localhost:8042/dicom-web
-    qido_prefix: str = ""   # Override QIDO path (leave empty for same base URL)
+    url: str  # Base URL, e.g. http://localhost:8042/dicom-web
+    qido_prefix: str = ""  # Override QIDO path (leave empty for same base URL)
     wado_prefix: str = ""
     stow_prefix: str = ""
-    auth_type: str = "none" # "none" | "basic" | "bearer"
+    auth_type: str = "none"  # "none" | "basic" | "bearer"
     username: str = ""
-    password: str = ""      # stored in plain text; keyring support is future work
+    password: str = ""  # stored in plain text; keyring support is future work
     token: str = ""
 
     # ── persistence ───────────────────────────────────────────────────────
@@ -49,14 +50,14 @@ class DICOMWebProfile:
         save_profile(SECTION, self.name, data)
 
     @classmethod
-    def load(cls, name: str) -> "DICOMWebProfile":
+    def load(cls, name: str) -> DICOMWebProfile:
         data = get_profile(SECTION, name)
         if data is None:
             raise DICOMWebProfileNotFoundError(name)
         return cls(name=name, **data)
 
     @classmethod
-    def list_all(cls) -> list["DICOMWebProfile"]:
+    def list_all(cls) -> list[DICOMWebProfile]:
         return [cls(name=n, **v) for n, v in list_profiles(SECTION).items()]
 
     def delete(self) -> None:
@@ -126,9 +127,7 @@ def qido_search(
     """
     method_name = _QIDO_METHOD.get(level.lower())
     if not method_name:
-        raise ValueError(
-            f"Invalid QIDO level '{level}'. Choose: studies, series, instances"
-        )
+        raise ValueError(f"Invalid QIDO level '{level}'. Choose: studies, series, instances")
 
     client = profile.client()
     kwargs: dict[str, Any] = {}
@@ -167,14 +166,14 @@ def _normalise_qido(results: list[dict]) -> list[dict[str, Any]]:
                 row[key] = v.get("Alphabetic", str(v)) if isinstance(v, dict) else str(v)
             else:
                 row[key] = [
-                    v.get("Alphabetic", str(v)) if isinstance(v, dict) else str(v)
-                    for v in values
+                    v.get("Alphabetic", str(v)) if isinstance(v, dict) else str(v) for v in values
                 ]
         out.append(row)
     return out
 
 
 # ── WADO-RS ───────────────────────────────────────────────────────────────────
+
 
 def wado_retrieve(
     profile: DICOMWebProfile,
@@ -208,10 +207,12 @@ def wado_retrieve(
             )
             datasets = [result] if isinstance(result, pydicom.Dataset) else list(result)
         elif series_uid:
-            datasets = list(client.retrieve_series(
-                study_instance_uid=study_uid,
-                series_instance_uid=series_uid,
-            ))
+            datasets = list(
+                client.retrieve_series(
+                    study_instance_uid=study_uid,
+                    series_instance_uid=series_uid,
+                )
+            )
         else:
             datasets = list(client.retrieve_study(study_instance_uid=study_uid))
     except Exception as exc:
@@ -222,8 +223,7 @@ def wado_retrieve(
         uid = str(getattr(ds, "SOPInstanceUID", f"instance_{len(saved)}"))
         out = output_dir / f"{uid}.dcm"
         has_tsyntax = bool(
-            getattr(ds, "file_meta", None)
-            and getattr(ds.file_meta, "TransferSyntaxUID", None)
+            getattr(ds, "file_meta", None) and getattr(ds.file_meta, "TransferSyntaxUID", None)
         )
         if has_tsyntax:
             ds.save_as(str(out))
@@ -234,6 +234,7 @@ def wado_retrieve(
 
 
 # ── STOW-RS ───────────────────────────────────────────────────────────────────
+
 
 @dataclass
 class StowResult:
