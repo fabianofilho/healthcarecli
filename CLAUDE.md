@@ -103,6 +103,21 @@ Connection profiles are stored in the platform-appropriate config directory:
 
 `config/manager.py` uses `platformdirs.user_config_dir("healthcarecli")` to resolve paths.
 
+## Agent Slash Commands (`.claude/commands/`)
+
+These custom commands teach Claude Code to configure profiles interactively using `AskUserQuestion`.
+Invoke them with `/setup-pacs`, `/setup-fhir`, or `/setup-hl7`.
+
+| Command | What it does |
+|---|---|
+| `/setup-pacs` | Guided DICOM AE profile wizard — collects host/port/AE title, runs C-ECHO ping, offers autotune |
+| `/setup-fhir` | Guided FHIR server profile wizard — collects URL + auth, verifies with CapabilityStatement |
+| `/setup-hl7` | Guided HL7 MLLP endpoint wizard — collects host/port/version, optionally sends a test message |
+
+Each command follows a structured question → confirm → save → verify → done flow.
+The autotune offer in `/setup-pacs` runs `healthcarecli dicom autotune sweep` to find optimal
+pynetdicom parameters (PDU size, timeouts, worker parallelism) for the specific PACS.
+
 ## Key Design Decisions
 
 - **Agent-first output**: All commands support `--output json` for machine-readable responses. Default human-readable output uses `rich`.
