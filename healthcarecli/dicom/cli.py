@@ -536,3 +536,20 @@ def parallel_send_cmd(
 
     if result.failed:
         raise typer.Exit(1)
+
+
+# ── View (terminal image renderer) ─────────────────────────────────────────
+
+
+@app.command("view")
+def view(
+    path: Annotated[Path, typer.Argument(help="DICOM file to view")],
+) -> None:
+    """Interactive DICOM viewer — slice navigation, pan, W/L, zoom."""
+    from healthcarecli.dicom.view import launch_viewer
+
+    if not path.exists():
+        console.print(f"[red]Not found: {path}[/red]")
+        raise typer.Exit(1)
+
+    launch_viewer(path)
